@@ -12,12 +12,14 @@ import (
 	"expvar"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/diagnose"
 	"github.com/DataDog/datadog-agent/pkg/status"
+	"github.com/DataDog/datadog-agent/pkg/status/health"
 	"github.com/DataDog/datadog-agent/pkg/util"
 
 	"github.com/jhoonb/archivex"
@@ -78,6 +80,11 @@ func createArchive(zipFilePath string, local bool, confSearchPaths SearchPaths, 
 	}
 
 	err = zipDiagnose(zipFile, hostname)
+	if err != nil {
+		return "", err
+	}
+
+	err = zipHealth(zipFile, hostname)
 	if err != nil {
 		return "", err
 	}
@@ -205,6 +212,27 @@ func zipDiagnose(zipFile *archivex.ZipFile, hostname string) error {
 	writer.Flush()
 
 	err := zipFile.Add(filepath.Join(hostname, "diagnose.log"), b.Bytes())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func zipHealth(zipFile *archivex.ZipFile, hostname string) error {
+	s := health.GetStatus()
+	if len(s.Healthy) > 0 {
+		sort.Strings(s.Healthy)
+	}
+	if len(s.UnHealthy) > 0 {
+		sort.Strings(s.UnHealthy)
+	}
+
+	yamlValue, err := yaml.Marshal(s)
+	if err != nil {
+		return err
+	}
+	err = zipFile.Add(filepath.Join(hostname, "health.yaml"), yamlValue)
 	if err != nil {
 		return err
 	}
