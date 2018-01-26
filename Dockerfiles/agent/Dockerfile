@@ -39,7 +39,7 @@ COPY datadog*.yaml etc/datadog-agent/
 RUN mv etc/datadog-agent/conf.d/docker.d/conf.yaml.example etc/datadog-agent/conf.d/docker.d/conf.yaml.default \
  && sed -i "s/enabled: false/enabled: true/" etc/datadog-agent/conf.d/process_agent.yaml.default
 
-COPY entrypoint.sh .
+COPY entrypoint.sh probe.sh .
 
 
 FROM debian:stretch-slim
@@ -74,7 +74,7 @@ VOLUME ["/conf.d", "/checks.d"]
 
 # Placeholder healthcheck, to be improved
 HEALTHCHECK --interval=5m --timeout=20s --retries=1 \
-  CMD ["/opt/datadog-agent/bin/agent/agent", "status"]
+  CMD ["/probe.sh"]
 
 ENTRYPOINT ["/tini", "--", "/entrypoint.sh"]
 CMD ["/opt/datadog-agent/bin/agent/agent", "start"]
