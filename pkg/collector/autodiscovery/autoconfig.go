@@ -87,7 +87,7 @@ func NewAutoConfig(collector *collector.Collector) *AutoConfig {
 		config2checks:   make(map[string][]check.ID),
 		name2jmxmetrics: make(map[string]check.ConfigData),
 		stop:            make(chan bool),
-		healthTicker:    time.NewTicker(15 * time.Second),
+		healthTicker:    time.NewTicker(health.DefaultPingFreq),
 		healthToken:     health.Register("ad-autoconfig"),
 	}
 	ac.configResolver = newConfigResolver(collector, ac, ac.templateCache)
