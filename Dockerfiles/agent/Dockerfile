@@ -42,6 +42,7 @@ RUN mv etc/datadog-agent/conf.d/docker.d/conf.yaml.example etc/datadog-agent/con
 COPY entrypoint.sh probe.sh .
 
 
+
 FROM debian:stretch-slim
 LABEL maintainer "Datadog <package@datadoghq.com>"
 ARG WITH_JMX
@@ -72,8 +73,7 @@ EXPOSE 8125/udp 8126/tcp
 # Extra conf.d and checks.d
 VOLUME ["/conf.d", "/checks.d"]
 
-# Placeholder healthcheck, to be improved
-HEALTHCHECK --interval=5m --timeout=20s --retries=1 \
+HEALTHCHECK --interval=2m --timeout=5s --retries=2 \
   CMD ["/probe.sh"]
 
 ENTRYPOINT ["/tini", "--", "/entrypoint.sh"]
