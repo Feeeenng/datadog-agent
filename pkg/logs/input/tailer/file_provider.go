@@ -8,6 +8,7 @@ package tailer
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	log "github.com/cihub/seelog"
 
@@ -42,15 +43,22 @@ func NewFileProvider(sources []*config.LogSource, filesLimit int) *FileProvider 
 	}
 }
 
-// FilesToTail returns all the Files matching paths in sources,
+// FilesToTail returns all the files matching paths in sources,
 // it cannot return more than filesLimit Files.
-// For now, there is no way to prioritize specific Files over others,
-// they are just returned in alphabetical order
+// For now, there is no way to prioritize specific files over others,
+// they are just returned in alphabetical order.
+// If a path contains a wildcard, returns only the files that are contained in directories with executable permissions.
 func (r *FileProvider) FilesToTail() []*File {
 	filesToTail := []*File{}
-	for _, source := range r.sources {
+	for i := 0; i < len(r.sources) && len(filesToTail) < r.filesLimit; i++ {
+		source := r.sources[i]
+		path := source.Config.Path
+		if !r.containsWildcards(path) {
+			filesToTail = append(filesToTail, NewFile(path, source))
+			continue
+		}
 		// search all files matching pattern and append them all until filesLimit is reached
-		pattern := source.Config.Path
+		pattern := path
 		paths, err := filepath.Glob(pattern)
 		if err != nil {
 			err := fmt.Errorf("Malformed pattern, could not find any file: %s", pattern)
@@ -59,18 +67,23 @@ func (r *FileProvider) FilesToTail() []*File {
 			continue
 		}
 		if len(paths) == 0 {
-			err := fmt.Errorf("No file are matching pattern: %s", pattern)
+			err := fmt.Errorf("No file are matching pattern %s, check directories permissions", pattern)
 			source.Status.Error(err)
 			log.Error(err)
 			continue
 		}
-		for _, path := range paths {
-			if len(filesToTail) == r.filesLimit {
-				log.Warn("Reached the limit on the maximum number of files in use: ", r.filesLimit)
-				return filesToTail
-			}
-			filesToTail = append(filesToTail, NewFile(path, source))
+		for j := 0; j < len(paths) && len(filesToTail) < r.filesLimit; j++ {
+			filesToTail = append(filesToTail, NewFile(paths[j], source))
 		}
 	}
+	if len(filesToTail) == r.filesLimit {
+		log.Warn("Reached the limit on the maximum number of files in use: ", r.filesLimit)
+	}
+
 	return filesToTail
+}
+
+// containsWildcards returns true if the path contains any wildcard character
+func (r *FileProvider) containsWildcards(path string) bool {
+	return strings.ContainsAny(path, "*?[")
 }
