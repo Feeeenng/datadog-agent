@@ -95,6 +95,13 @@ func NewRunner() *Runner {
 	return r
 }
 
+// AddRunner adds a new worker to the worker pull
+func (r *Runner) AddRunner() {
+	runnerStats.Add("Workers", 1)
+	TestWg.Add(1)
+	go r.work()
+}
+
 // UpdateNumWorkers checks if the current number of workers is reasonable, and adds more if needed
 func (r *Runner) UpdateNumWorkers(numChecks int64) {
 	numWorkers, _ := strconv.Atoi(runnerStats.Get("Workers").String())
@@ -124,9 +131,7 @@ func (r *Runner) UpdateNumWorkers(numChecks int64) {
 		if numWorkers >= desiredNumWorkers {
 			break
 		}
-		runnerStats.Add("Workers", 1)
-		TestWg.Add(1)
-		go r.work()
+		r.AddRunner()
 		numWorkers++
 		added++
 	}
@@ -298,6 +303,12 @@ func (r *Runner) work() {
 			log.Infof(l, check)
 		} else {
 			log.Debugf(l, check)
+		}
+
+		if check.Interval() == 0 {
+			log.Infof("Check %v one-time's execution has finish", check)
+			runnerStats.Add("Workers", -1)
+			return
 		}
 	}
 
