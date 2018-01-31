@@ -26,6 +26,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
 	"github.com/DataDog/datadog-agent/pkg/util/cache"
 	"github.com/DataDog/datadog-agent/pkg/util/retry"
+	"github.com/DataDog/datadog-agent/pkg/util/kubernetes/leaderelection"
 )
 
 var globalApiClient *APIClient
@@ -117,6 +118,11 @@ func (c *APIClient) connect() error {
 		return nil
 	}
 	c.startServiceMapping()
+	err = leaderelection.StartLeaderelection()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
